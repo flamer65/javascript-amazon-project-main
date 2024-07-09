@@ -1,28 +1,19 @@
 import { cart , removeFromCart, calculateCartQuantity, updateQuantity as UpdateQuantity, updateDeliveryOption} from "../../data/cart.js";
-import { products } from "../../data/products.js";
+import { products, getProduct } from "../../data/products.js";
 import { formatCurrency } from "../util/money.js";
 import dayjs from "https://unpkg.com/dayjs@1.11.10/esm/index.js";
-import {deliveryOption} from "../../data/deliveryOptions.js";
+import {deliveryOption, getDeliveryOption} from "../../data/deliveryOptions.js";
 
 export function renderOrderSummary() {
 let cartSummary = ``;
   cart.forEach((cartitem) =>{
       const productId = cartitem.productId;
-    let matchitem;
-    products.forEach((product)=>{
-      if(product.id ===  productId){
-          matchitem = product;
-      }
-    });
+    let matchitem = getProduct(productId);
+
     console.log(matchitem);
     let deliveryOptionId = cartitem.deliveryOptionId;
    
-    let deliveryOptions;
-    deliveryOption.forEach((option) =>{
-      if(option.id === deliveryOptionId){
-        deliveryOptions = option.deliveryDays
-      }
-    });
+   let deliveryOptions = getDeliveryOption(deliveryOptionId)
    let today = dayjs();
    let deliverydate = today.add(deliveryOptions,'days');
    let dateString = deliverydate.format('dddd, MMMM D');
@@ -50,7 +41,7 @@ let cartSummary = ``;
           <span class="update-quantity-link link-primary js-update-quantity " data-product-id="${matchitem.id}">
             Update
           </span>
-          <input class="quantity-input js-quantity-input" >
+          <input class="quantity-input js-quantity-input quantity-input-${matchitem.id}">
           <span class="save-quantity-link link-primary" data-product-id="${matchitem.id}">Save</span>
           <span class="delete-quantity-link link-primary js-delete-link" data-product-id="${matchitem.id}">
             Delete
@@ -110,7 +101,7 @@ let cartSummary = ``;
   function updateQuantity(){
       const cartQuantity = calculateCartQuantity();
       document.querySelector('.js-return-home-link').innerHTML = `${cartQuantity} Item`;
-      document.querySelector('.js-items-in-cart').innerHTML = `Items(${cartQuantity}): `;
+     // document.querySelector('.js-items-in-cart').innerHTML = `Items(${cartQuantity}): `;
   }
 
 
@@ -126,27 +117,37 @@ let cartSummary = ``;
   });
 
   document.querySelectorAll('.save-quantity-link').forEach((button) => {
+    const productId = button.dataset.productId;
+    const updateQuantityInput = document.querySelector(`.quantity-input-${productId}`);
     button.addEventListener('click', () => {
-      const productId = button.dataset.productId;
-      let container = document.querySelector(`.js-cart-item-cointainer-${productId}`);
-      container.classList.remove('is-editing-quantity');
-      const updatequantity =  document.querySelector('.quantity-input');
-      let newquantity = Number(updatequantity.value);
-      if(newquantity < 0 || newquantity >= 1000){
-        console.log(newquantity);
-        alert("Quantity must be at least 0 and less than 1000");
-        return;
-      }
-      UpdateQuantity(productId,newquantity);
-      const quantityLabel = document.querySelector(
-        `.js-quantity-label-${productId}`
-      );
-      quantityLabel.innerHTML = newquantity;
-      
-      updateQuantity();
+      handleUpdateQuantity(productId,updateQuantityInput)
     });
-  });
+    updateQuantityInput.addEventListener('keydown', (event) =>{
+        if(event.key === 'Enter' || event.keyCode === 13){
+            handleUpdateQuantity(productId, updateQuantityInput)
+        }
+    })
 
+  });
+ function handleUpdateQuantity(productId, updateQuantityInput){
+    let container = document.querySelector(`.js-cart-item-cointainer-${productId}`);
+    container.classList.remove('is-editing-quantity');
+    const updatequantity =  document.querySelector('.quantity-input');
+    let newquantity = Number(updateQuantityInput.value);
+    if(newquantity < 0 || newquantity >= 1000){
+      console.log(newquantity);
+      alert("Quantity must be at least 0 and less than 1000");
+      return;
+    }
+    UpdateQuantity(productId,newquantity);
+    const quantityLabel = document.querySelector(
+      `.js-quantity-label-${productId}`
+    );
+    quantityLabel.innerHTML = newquantity;
+    
+    updateQuantity();
+    renderOrderSummary();
+ }
   document.querySelectorAll('.js-delivery-options').forEach((element) =>{
     element.addEventListener('click', () =>{
       const {productId, deliveryOptionId} = element.dataset;
